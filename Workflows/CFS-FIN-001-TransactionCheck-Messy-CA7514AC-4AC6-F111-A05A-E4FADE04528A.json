@@ -1,0 +1,135 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "invoker",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedsharepointonline_ce1f1"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "undefined",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {},
+              "required": []
+            }
+          }
+        }
+      },
+      "actions": {
+        "Get_items": {
+          "runAfter": {},
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+              "table": "ceb5362f-5752-48be-881a-1e3c9c21ede7"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "operationId": "GetItems",
+              "connectionName": "shared_sharepointonline"
+            }
+          }
+        },
+        "Apply_to_each": {
+          "foreach": "@outputs('Get_items')?['body/value']",
+          "actions": {
+            "Condition": {
+              "actions": {
+                "Create_item": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+                      "table": "0a3f8bd7-58e6-443c-851b-31104aca6b10",
+                      "item/Title": "High Value Transaction",
+                      "item/MonitoringStepsID": "MS-FIN-001",
+                      "item/RunDate": "@utcNow()",
+                      "item/ResultStatus/Value": "Fail",
+                      "item/ResultDetails": "High-value transaction: Amount exceeds RM10,000",
+                      "item/ControlCode": "CFS-FIN-001",
+                      "item/TransactionID": "@items('Apply_to_each')?['TransactionID']",
+                      "item/RunID": "Messy-Run-001"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "operationId": "PostItem",
+                      "connectionName": "shared_sharepointonline"
+                    }
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "Create_item_1": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+                        "table": "0a3f8bd7-58e6-443c-851b-31104aca6b10",
+                        "item/Title": "Transaction Within Threshold",
+                        "item/MonitoringStepsID": "MS-FIN-001",
+                        "item/RunDate": "@utcNow()",
+                        "item/ResultStatus/Value": "Pass",
+                        "item/ResultDetails": "Transaction amount does not exceed RM10,000",
+                        "item/ControlCode": "CFS-FIN-001",
+                        "item/TransactionID": "@items('Apply_to_each')?['TransactionID']",
+                        "item/RunID": "Messy-Run-001"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                        "operationId": "PostItem",
+                        "connectionName": "shared_sharepointonline"
+                      }
+                    }
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "greater": [
+                      "@items('Apply_to_each')?['Amount']",
+                      10000
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            }
+          },
+          "runAfter": {
+            "Get_items": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
