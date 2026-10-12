@@ -1,0 +1,11 @@
+<environmentvariabledefinition schemaname="cr5ff_ActiveMonitoringStatus">
+  <defaultvalue>Active</defaultvalue>
+  <displayname default="Active Monitoring Status">
+    <label description="Active Monitoring Status" languagecode="1033" />
+  </displayname>
+  <introducedversion>1.0.0.0</introducedversion>
+  <iscustomizable>1</iscustomizable>
+  <isrequired>0</isrequired>
+  <secretstore>0</secretstore>
+  <type>100000000</type>
+</environmentvariabledefinition>
