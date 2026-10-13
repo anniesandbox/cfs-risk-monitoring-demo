@@ -1,0 +1,439 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "invoker",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedsharepointonline_ce1f1"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "undefined",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "metadata": {
+            "operationMetadataId": "8d137f58-4965-430c-bd53-d41455e47a8a"
+          },
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {},
+              "required": []
+            }
+          }
+        }
+      },
+      "actions": {
+        "Initialize_variable_varRunID": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "998f338e-f0fd-4ab5-b4c4-946bba21ae74"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varRunID",
+                "type": "string",
+                "value": "@guid()"
+              }
+            ]
+          }
+        },
+        "Scope_-_Try": {
+          "actions": {
+            "Get_items_Transaction": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "7c597c7e-48f9-461b-9e60-3ec13151064b"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "GetItems",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                },
+                "parameters": {
+                  "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+                  "table": "ceb5362f-5752-48be-881a-1e3c9c21ede7"
+                },
+                "authentication": {
+                  "type": "Raw",
+                  "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                }
+              }
+            },
+            "Apply_to_each": {
+              "foreach": "@outputs('Get_items_Transaction')?['body/value']",
+              "actions": {
+                "Compose_Title": {
+                  "runAfter": {},
+                  "metadata": {
+                    "operationMetadataId": "d4ee93c4-8e81-4f97-9c8d-5c6e6fb11fb8"
+                  },
+                  "type": "Compose",
+                  "inputs": "@items('Apply_to_each')?['Title']"
+                },
+                "Compose_MonitoringStepID": {
+                  "runAfter": {
+                    "Compose_Title": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "d969c051-df10-4db8-8335-fd91190c3a55"
+                  },
+                  "type": "Compose",
+                  "inputs": "MS-FIN-001"
+                },
+                "Compose_TransactionID": {
+                  "runAfter": {
+                    "Compose_MonitoringStepID": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "45eea935-a1c7-4c60-a13d-2c7318b7e26d"
+                  },
+                  "type": "Compose",
+                  "inputs": "@items('Apply_to_each')?['TransactionID']"
+                },
+                "Condition_invalid_transaction": {
+                  "actions": {
+                    "Create_Monitoring_Result_-_Error": {
+                      "runAfter": {},
+                      "metadata": {
+                        "operationMetadataId": "6c6dffdb-6c64-4aeb-8024-79bf685103e9"
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_sharepointonline",
+                          "operationId": "PostItem",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                        },
+                        "parameters": {
+                          "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+                          "table": "0a3f8bd7-58e6-443c-851b-31104aca6b10",
+                          "item/Title": "@outputs('Compose_TransactionID')",
+                          "item/MonitoringStepsID": "@outputs('Compose_MonitoringStepID')",
+                          "item/RunDate": "@utcNow()",
+                          "item/ResultStatus/Value": "Error",
+                          "item/ResultDetails": "Data quality error: InvoiceNumber is missing",
+                          "item/ControlCode": "CFS-FIN-001",
+                          "item/TransactionID": "@outputs('Compose_TransactionID')",
+                          "item/RunID": "@variables('varRunID')"
+                        },
+                        "authentication": {
+                          "type": "Raw",
+                          "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Compose_TransactionID": [
+                      "Succeeded"
+                    ]
+                  },
+                  "else": {
+                    "actions": {
+                      "Condition_valid_transaction": {
+                        "actions": {
+                          "Create_Monitoring_Result_Invalid_Amount": {
+                            "runAfter": {},
+                            "metadata": {
+                              "operationMetadataId": "6f359df2-4d74-4503-9882-cf08872e75c4"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "host": {
+                                "connectionName": "shared_sharepointonline",
+                                "operationId": "PostItem",
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                              },
+                              "parameters": {
+                                "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+                                "table": "0a3f8bd7-58e6-443c-851b-31104aca6b10",
+                                "item/Title": "@outputs('Compose_Title')",
+                                "item/MonitoringStepsID": "@outputs('Compose_MonitoringStepID')",
+                                "item/RunDate": "@utcNow()",
+                                "item/ResultStatus/Value": "Fail",
+                                "item/ResultDetails": "Invalid transaction amount: Amount must be greater than $0",
+                                "item/ControlCode": "CFS-FIN-001",
+                                "item/TransactionID": "@outputs('Compose_TransactionID')",
+                                "item/RunID": "@variables('varRunID')"
+                              },
+                              "authentication": {
+                                "type": "Raw",
+                                "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                              }
+                            }
+                          }
+                        },
+                        "runAfter": {},
+                        "else": {
+                          "actions": {
+                            "Condition_High_Value": {
+                              "actions": {
+                                "Create_Monitoring_Result_Amount_more_than_10_000": {
+                                  "runAfter": {},
+                                  "metadata": {
+                                    "operationMetadataId": "659cebdd-63c1-4dcf-9012-5c28fa84ee7f"
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "connectionName": "shared_sharepointonline",
+                                      "operationId": "PostItem",
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                                    },
+                                    "parameters": {
+                                      "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+                                      "table": "0a3f8bd7-58e6-443c-851b-31104aca6b10",
+                                      "item/Title": "@outputs('Compose_Title')",
+                                      "item/MonitoringStepsID": "@outputs('Compose_MonitoringStepID')",
+                                      "item/RunDate": "@utcNow()",
+                                      "item/ResultStatus/Value": "Fail",
+                                      "item/ResultDetails": "High-value transaction: Amount exceeds $10,000",
+                                      "item/ControlCode": "CFS-FIN-001",
+                                      "item/TransactionID": "@outputs('Compose_TransactionID')",
+                                      "item/RunID": "@variables('varRunID')"
+                                    },
+                                    "authentication": {
+                                      "type": "Raw",
+                                      "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                                    }
+                                  }
+                                }
+                              },
+                              "runAfter": {},
+                              "else": {
+                                "actions": {
+                                  "Filter_array": {
+                                    "runAfter": {},
+                                    "metadata": {
+                                      "operationMetadataId": "0d422aad-73dd-47cf-8e84-267f9387a6b2"
+                                    },
+                                    "type": "Query",
+                                    "inputs": {
+                                      "from": "@outputs('Get_items_Transaction')?['body/value']",
+                                      "where": "@and(\n  equals(item()?['VendorID'], items('Apply_to_each')?['VendorID']),\n  equals(item()?['InvoiceNumber'], items('Apply_to_each')?['InvoiceNumber']),\n  equals(item()?['Amount'], items('Apply_to_each')?['Amount']),\n  not(equals(item()?['TransactionID'], items('Apply_to_each')?['TransactionID']))\n)"
+                                    }
+                                  },
+                                  "Condition": {
+                                    "actions": {
+                                      "Create_Monitoring_Result_Duplicated": {
+                                        "runAfter": {},
+                                        "metadata": {
+                                          "operationMetadataId": "1b4158b5-6931-45c2-a273-e15c516b9718"
+                                        },
+                                        "type": "OpenApiConnection",
+                                        "inputs": {
+                                          "host": {
+                                            "connectionName": "shared_sharepointonline",
+                                            "operationId": "PostItem",
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                                          },
+                                          "parameters": {
+                                            "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+                                            "table": "0a3f8bd7-58e6-443c-851b-31104aca6b10",
+                                            "item/Title": "@outputs('Compose_Title')",
+                                            "item/MonitoringStepsID": "@outputs('Compose_MonitoringStepID')",
+                                            "item/RunDate": "@utcNow()",
+                                            "item/ResultStatus/Value": "Fail",
+                                            "item/ResultDetails": "Duplicate transaction detected: VendorID, InvoiceNumber and Amount match another transaction",
+                                            "item/ControlCode": "CFS-FIN-001",
+                                            "item/TransactionID": "@outputs('Compose_TransactionID')",
+                                            "item/RunID": "@variables('varRunID')"
+                                          },
+                                          "authentication": {
+                                            "type": "Raw",
+                                            "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "runAfter": {
+                                      "Filter_array": [
+                                        "Succeeded"
+                                      ]
+                                    },
+                                    "else": {
+                                      "actions": {
+                                        "Create_Monitoring_Result_No_Duplication": {
+                                          "runAfter": {},
+                                          "metadata": {
+                                            "operationMetadataId": "419c7d62-6681-4eb4-8882-662979195945"
+                                          },
+                                          "type": "OpenApiConnection",
+                                          "inputs": {
+                                            "host": {
+                                              "connectionName": "shared_sharepointonline",
+                                              "operationId": "PostItem",
+                                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                                            },
+                                            "parameters": {
+                                              "dataset": "https://70kv6sv.sharepoint.com/sites/DControlMonitoring",
+                                              "table": "0a3f8bd7-58e6-443c-851b-31104aca6b10",
+                                              "item/Title": "@outputs('Compose_Title')",
+                                              "item/MonitoringStepsID": "@outputs('Compose_MonitoringStepID')",
+                                              "item/RunDate": "@utcNow()",
+                                              "item/ResultStatus/Value": "Pass",
+                                              "item/ResultDetails": "No duplicate detected. Transaction passed configured checks.",
+                                              "item/ControlCode": "CFS-FIN-001",
+                                              "item/TransactionID": "@outputs('Compose_TransactionID')",
+                                              "item/RunID": "@variables('varRunID')"
+                                            },
+                                            "authentication": {
+                                              "type": "Raw",
+                                              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "expression": {
+                                      "greaterOrEquals": [
+                                        "@length(body('Filter_array'))",
+                                        0
+                                      ]
+                                    },
+                                    "metadata": {
+                                      "operationMetadataId": "73bc2e22-a8f6-45ce-bc6f-f3b1585ae9d9"
+                                    },
+                                    "type": "If"
+                                  }
+                                }
+                              },
+                              "expression": {
+                                "greater": [
+                                  "@items('Apply_to_each')?['Amount']",
+                                  10000
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "d75b1dec-6a27-4d5e-b37d-32a0b0acb344"
+                              },
+                              "type": "If"
+                            }
+                          }
+                        },
+                        "expression": {
+                          "lessOrEquals": [
+                            "@items('Apply_to_each')?['Amount']",
+                            0
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "ab342dac-1f9b-4c9a-9ebb-89178f1f11e1"
+                        },
+                        "type": "If"
+                      }
+                    }
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@item()?['InvoiceNumber']",
+                          ""
+                        ]
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "5023376a-b064-4253-b048-5563b10c8257"
+                  },
+                  "type": "If"
+                }
+              },
+              "runAfter": {
+                "Get_items_Transaction": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "925742d0-0795-4ffc-9cf3-e74c6e16eaff"
+              },
+              "type": "Foreach"
+            }
+          },
+          "runAfter": {
+            "Initialize_variable_varRunID": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "11c1759d-3d1c-4378-8a90-a8f17ea61503"
+          },
+          "type": "Scope"
+        },
+        "Scope_-_Catch": {
+          "actions": {
+            "Compose_-_Catch_Error": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "3cbc2e92-e6db-43c3-9e4c-d0e29eb4009a"
+              },
+              "type": "Compose",
+              "inputs": "TRY scope failed — check run history for the failed action and error details."
+            }
+          },
+          "runAfter": {
+            "Scope_-_Try": [
+              "Failed",
+              "Skipped",
+              "TimedOut"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "189bf145-d23a-4104-b3c4-fc8c276565cc"
+          },
+          "type": "Scope"
+        },
+        "Scope_-_Final": {
+          "actions": {
+            "Compose_-_Run_Completed": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "36aab4b0-55a2-472d-94e1-46c7b98ee203"
+              },
+              "type": "Compose",
+              "inputs": "Transaction monitoring execution finished."
+            }
+          },
+          "runAfter": {
+            "Scope_-_Catch": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "461dbf8a-48dc-43c5-bee4-192e21bf49d9"
+          },
+          "type": "Scope"
+        }
+      }
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}
