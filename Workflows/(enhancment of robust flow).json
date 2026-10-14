@@ -76,11 +76,11 @@
                 }
               }
             },
-            "Select_Prep_Transactions": {
-              "metadata": {
-                "operationMetadataId": "select-prep-0001"
-              },
+            "Select_Prepared_Transactions": {
               "type": "Select",
+              "metadata": {
+                "operationMetadataId": "d69b9e02-7b70-4749-94ca-c87d0d6a7754"
+              },
               "inputs": {
                 "from": "@outputs('Get_items_Transaction')?['body/value']",
                 "select": {
@@ -222,13 +222,13 @@
                               "else": {
                                 "actions": {
                                   "Filter_array_-_Matching_Duplicate_Transactions": {
+                                    "type": "Query",
                                     "metadata": {
                                       "operationMetadataId": "0d422aad-73dd-47cf-8e84-267f9387a6b2"
                                     },
-                                    "type": "Query",
                                     "inputs": {
-                                      "from": "@outputs('Select_Prep_Transactions')",
-                                      "where": "@and(\r\n  equals(item()?['VendorID'], items('Apply_to_each')?['VendorID']),\r\n  equals(item()?['InvoiceNumberNormalized'], toLower(trim(string(coalesce(items('Apply_to_each')?['InvoiceNumber'], ''))))),\r\n  lessOrEquals(abs(sub(float(item()?['Amount']), float(items('Apply_to_each')?['Amount']))), 0.01)\r\n)"
+                                      "from": "@outputs('Select_Prepared_Transactions')",
+                                      "where": "@and(\n  not(equals(item()?['TransactionID'], items('Apply_to_each')?['TransactionID'])),\n  equals(item()?['VendorID'], items('Apply_to_each')?['VendorID']),\n  equals(item()?['InvoiceNumberNormalized'], toLower(trim(string(coalesce(items('Apply_to_each')?['InvoiceNumber'], ''))))),\n  lessOrEquals(abs(sub(float(item()?['Amount']), float(items('Apply_to_each')?['Amount']))), 0.01)\n)"
                                     }
                                   },
                                   "Condition_is_duplicate_found": {
@@ -321,96 +321,106 @@
                               },
                               "type": "If"
                             }
-                          },
-                          "expression": {
-                            "lessOrEquals": [
-                              "@items('Apply_to_each')?['Amount']",
-                              0
-                            ]
-                          },
-                          "metadata": {
-                            "operationMetadataId": "ab342dac-1f9b-4c9a-9ebb-89178f1f11e1"
-                          },
-                          "type": "If"
-                        }
-                      }
-                    },
-                    "expression": {
-                      "and": [
-                        {
-                          "equals": [
-                            "@empty(trim(string(coalesce(items('Apply_to_each')?['InvoiceNumber'], ''))))",
-                            true
+                          }
+                        },
+                        "expression": {
+                          "lessOrEquals": [
+                            "@items('Apply_to_each')?['Amount']",
+                            0
                           ]
-                        }
-                      ]
-                    },
-                    "metadata": {
-                      "operationMetadataId": "5023376a-b064-4253-b048-5563b10c8257"
-                    },
-                    "type": "If"
-                  }
-                },
-                "runAfter": {
-                  "Get_items_Transaction": [
-                    "Succeeded"
-                  ]
-                },
-                "metadata": {
-                  "operationMetadataId": "925742d0-0795-4ffc-9cf3-e74c6e16eaff"
-                },
-                "type": "Foreach"
-              }
-            },
-            "Scope_-_Catch": {
-              "actions": {
-                "Compose_-_Catch_Error": {
-                  "metadata": {
-                    "operationMetadataId": "3cbc2e92-e6db-43c3-9e4c-d0e29eb4009a"
+                        },
+                        "metadata": {
+                          "operationMetadataId": "ab342dac-1f9b-4c9a-9ebb-89178f1f11e1"
+                        },
+                        "type": "If"
+                      }
+                    }
                   },
-                  "type": "Compose",
-                  "inputs": "TRY scope failed — check run history for the failed action and error details."
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@empty(trim(string(coalesce(items('Apply_to_each')?['InvoiceNumber'], ''))))",
+                          true
+                        ]
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "5023376a-b064-4253-b048-5563b10c8257"
+                  },
+                  "type": "If"
                 }
               },
               "runAfter": {
-                "Scope_-_Try": [
-                  "Failed",
-                  "Skipped",
-                  "TimedOut"
-                ]
-              },
-              "metadata": {
-                "operationMetadataId": "189bf145-d23a-4104-b3c4-fc8c276565cc"
-              },
-              "type": "Scope"
-            },
-            "Scope_-_Final": {
-              "actions": {
-                "Compose_-_Run_Completed": {
-                  "metadata": {
-                    "operationMetadataId": "36aab4b0-55a2-472d-94e1-46c7b98ee203"
-                  },
-                  "type": "Compose",
-                  "inputs": "Transaction monitoring execution finished."
-                }
-              },
-              "runAfter": {
-                "Scope_-_Catch": [
-                  "Succeeded"
-                ],
-                "Scope_-_Try": [
+                "Get_items_Transaction": [
                   "Succeeded"
                 ]
               },
               "metadata": {
-                "operationMetadataId": "461dbf8a-48dc-43c5-bee4-192e21bf49d9"
+                "operationMetadataId": "925742d0-0795-4ffc-9cf3-e74c6e16eaff"
               },
-              "type": "Scope"
+              "type": "Foreach"
             }
-          }
+          },
+          "runAfter": {
+            "Initialize_variable_varRunID": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "11c1759d-3d1c-4378-8a90-a8f17ea61503"
+          },
+          "type": "Scope"
         },
-      "templateName": null
-    }
+        "Scope_-_Catch": {
+          "actions": {
+            "Compose_-_Catch_Error": {
+              "metadata": {
+                "operationMetadataId": "3cbc2e92-e6db-43c3-9e4c-d0e29eb4009a"
+              },
+              "type": "Compose",
+              "inputs": "TRY scope failed — check run history for the failed action and error details."
+            }
+          },
+          "runAfter": {
+            "Scope_-_Try": [
+              "Failed",
+              "Skipped",
+              "TimedOut"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "189bf145-d23a-4104-b3c4-fc8c276565cc"
+          },
+          "type": "Scope"
+        },
+        "Scope_-_Final": {
+          "actions": {
+            "Compose_-_Run_Completed": {
+              "metadata": {
+                "operationMetadataId": "36aab4b0-55a2-472d-94e1-46c7b98ee203"
+              },
+              "type": "Compose",
+              "inputs": "Transaction monitoring execution finished."
+            }
+          },
+          "runAfter": {
+            "Scope_-_Catch": [
+              "Succeeded"
+            ],
+            "Scope_-_Try": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "461dbf8a-48dc-43c5-bee4-192e21bf49d9"
+          },
+          "type": "Scope"
+        }
+      }
+    },
+    "templateName": null
   },
   "schemaVersion": "1.0.0.0"
 }
